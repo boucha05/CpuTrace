@@ -1,6 +1,9 @@
 # CpuTrace
 Tool for capturing and replaying CPU instructions.
 
+[![Build Status](https://ci.appveyor.com/api/projects/status/github/boucha05/CpuTrace?svg=true)](https://ci.appveyor.com/project/boucha05/cputrace)
+[![License](http://img.shields.io/:license-mit-blue.svg)](http://doge.mit-license.org)
+
 # Description
 
 This is a tool that can be integrated into emulators to capture and replay sequences of CPU instructions.
