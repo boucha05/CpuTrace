@@ -3,8 +3,8 @@
 #include <string>
 #include <vector>
 
-#include "murmur3.h"
-#include "murmur3.c"
+#include "../contrib/murmur3/murmur3.h"
+#include "../contrib/murmur3/murmur3.c"
 
 namespace
 {
