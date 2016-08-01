@@ -1,3 +1,6 @@
+install:
+    - cmd: git submodule update --init --recursive
+
 os:
     - Visual Studio 2015
 
