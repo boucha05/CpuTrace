@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include "CpuTrace.h"
 #include <cstdio>
 #include <string>
@@ -108,7 +109,7 @@ namespace
             }
 
             uint32_t hash[4];
-            MurmurHash3_x64_128(mState.data(), mState.size(), 0, hash);
+            MurmurHash3_x64_128(mState.data(), static_cast<int>(mState.size()), 0, hash);
             emit(Command::Execute, hash[0], hash[1], hash[2], hash[3]);
         }
 
