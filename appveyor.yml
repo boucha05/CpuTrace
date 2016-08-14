@@ -11,7 +11,8 @@ configuration:
 
 install:
     - cmd: git submodule update --init --recursive
+    - cmd: MakeSolution.bat
 
 build:
     parallel: true
-    project: build\CpuTrace\CpuTrace.sln
+    project: build\CpuTrace.sln
