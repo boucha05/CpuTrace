@@ -6,6 +6,22 @@ namespace CpuTrace
 {
     const uint32_t Version = 1;
 
+    class IStream
+    {
+    public:
+        virtual void seek(uint64_t offset) = 0;
+        virtual uint64_t size() const = 0;
+        virtual uint64_t pos() const = 0;
+        virtual uint64_t write(const void* data, uint64_t size) = 0;
+        virtual uint64_t read(void* data, uint64_t size) = 0;
+        virtual void flush() = 0;
+    };
+
+    class ITrace
+    {
+    public:
+    };
+
     class ICapture
     {
     public:
@@ -59,7 +75,11 @@ namespace CpuTrace
     class IContext
     {
     public:
-        virtual ICapture& startCapture(ICaptureDevice& device, const char* path) = 0;
+        virtual ITrace& createTrace() = 0;
+        virtual void destroyTrace(ITrace& trace) = 0;
+        virtual void loadTrace(ITrace& trace, IStream& stream) = 0;
+        virtual void saveTrace(const ITrace& trace, IStream& stream) = 0;
+        virtual ICapture& startCapture(ICaptureDevice& device, ITrace& trace) = 0;
         virtual void stopCapture(ICapture& capture) = 0;
     };
 

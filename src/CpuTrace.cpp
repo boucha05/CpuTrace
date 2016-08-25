@@ -1,9 +1,6 @@
-#ifndef _CRT_SECURE_NO_WARNINGS
-#define _CRT_SECURE_NO_WARNINGS
-#endif
-
 #include "CpuTrace.h"
-#include <cstdio>
+#include "Serializer.h"
+#include <cassert>
 #include <string>
 #include <vector>
 
@@ -12,6 +9,79 @@
 
 namespace
 {
+    using namespace CpuTrace;
+    using namespace CpuTrace::Impl;
+
+    size_t to_size_t(uint64_t value)
+    {
+        assert(value <= SIZE_MAX);
+        return static_cast<size_t>(value);
+    }
+
+    class MemoryStream : public IStream
+    {
+    public:
+        const uint8_t* getData() const
+        {
+            return mBuffer.data();
+        }
+
+        uint8_t* getData()
+        {
+            return mBuffer.data();
+        }
+
+        virtual void seek(uint64_t offset) override
+        {
+            mPos = offset;
+            ensure(mPos + 1);
+        }
+
+        virtual uint64_t size() const override
+        {
+            return mBuffer.size();
+        }
+
+        virtual uint64_t pos() const override
+        {
+            return mPos;
+        }
+
+        virtual uint64_t write(const void* data, uint64_t size) override
+        {
+            ensure(mPos + size);
+            memcpy(mBuffer.data() + mPos, data, to_size_t(size));
+            mPos += size;
+            return size;
+        }
+
+        virtual uint64_t read(void* data, uint64_t size) override
+        {
+            uint64_t capacity = static_cast<uint64_t>(mBuffer.size());
+            uint64_t maxSize = capacity - mPos;
+            if (size > maxSize)
+                size = maxSize;
+            memcpy(data, mBuffer.data() + mPos, to_size_t(size));
+            return size;
+        }
+
+        virtual void flush() override
+        {
+        }
+
+    private:
+        virtual void ensure(uint64_t size)
+        {
+            if (size > static_cast<uint64_t>(mBuffer.size()))
+            {
+                mBuffer.resize(to_size_t(size), 0);
+            }
+        }
+
+        std::vector<uint8_t>    mBuffer;
+        uint64_t                mPos;
+    };
+
     using namespace CpuTrace;
 
     static const uint32_t Magic = 0x20160729;
@@ -48,7 +118,7 @@ namespace
         return (value + mask) / alignment;
     }
 
-    class Trace
+    class Trace : public ITrace
     {
     public:
         std::vector<uint32_t>& getBuffer()
@@ -61,18 +131,39 @@ namespace
             return mBuffer;
         }
 
+        void load(IStream& stream)
+        {
+            auto size = stream.size();
+            mBuffer.resize(to_size_t(size), 0);
+            stream.read(mBuffer.data(), size);
+        }
+
+        void save(IStream& stream) const
+        {
+            stream.write(mBuffer.data(), mBuffer.size());
+        }
+
     private:
+        struct Chunk
+        {
+            uint64_t            mOffset;
+            size_t              mSize;
+        };
+
+        std::vector<Chunk>      mChunks;
+        MemoryStream            mData;
         std::vector<uint32_t>   mBuffer;
     };
 
     class Capture : public ICapture
     {
     public:
-        Capture(ICaptureDevice& device, const char* path)
+        Capture(ICaptureDevice& device, Trace& trace)
             : mDevice(device)
-            , mPath(path)
+            , mTrace(trace)
             , mInvalidated(true)
         {
+            mTrace.getBuffer().clear();
             mTrace.getBuffer().reserve(1024 * 1024);
 
             mDevice.startCapture(*this);
@@ -168,6 +259,11 @@ namespace
             emitU32(value);
         }
 
+        Trace& getTrace()
+        {
+            return mTrace;
+        }
+
     private:
         union CommandHeader
         {
@@ -235,8 +331,8 @@ namespace
             mTrace.getBuffer().push_back(static_cast<uint32_t>(value));
         }
 
-        Trace                   mTrace;
         ICaptureDevice&         mDevice;
+        Trace&                  mTrace;
         std::string             mPath;
         bool                    mInvalidated;
         std::vector<uint8_t>    mState;
@@ -245,9 +341,29 @@ namespace
     class Context : public IContext
     {
     public:
-        virtual ICapture& startCapture(ICaptureDevice& device, const char* path) override
+        virtual ITrace& createTrace()
         {
-            return *(new Capture(device, path));
+            return *new Trace();
+        }
+
+        virtual void destroyTrace(ITrace& trace)
+        {
+            delete static_cast<Trace*>(&trace);
+        }
+
+        virtual void loadTrace(ITrace& trace, IStream& stream)
+        {
+            static_cast<Trace&>(trace).load(stream);
+        }
+
+        virtual void saveTrace(const ITrace& trace, IStream& stream)
+        {
+            static_cast<const Trace&>(trace).save(stream);
+        }
+
+        virtual ICapture& startCapture(ICaptureDevice& device, ITrace& trace) override
+        {
+            return *(new Capture(device, static_cast<Trace&>(trace)));
         }
 
         virtual void stopCapture(ICapture& capture) override
