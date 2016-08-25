@@ -178,14 +178,6 @@ namespace
             emit(Command::Footer);
 
             mDevice.stopCapture(*this);
-
-            FILE* file = fopen(mPath.c_str(), "wb");
-            if (file)
-            {
-                const auto& buffer = mTrace.getBuffer();
-                fwrite(buffer.data(), sizeof(uint32_t), buffer.size(), file);
-                fclose(file);
-            }
         }
 
         virtual void invalidateState() override
@@ -333,7 +325,6 @@ namespace
 
         ICaptureDevice&         mDevice;
         Trace&                  mTrace;
-        std::string             mPath;
         bool                    mInvalidated;
         std::vector<uint8_t>    mState;
     };
