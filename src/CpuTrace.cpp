@@ -134,13 +134,13 @@ namespace
         void load(IStream& stream)
         {
             auto size = stream.size();
-            mBuffer.resize(to_size_t(size), 0);
+            mBuffer.resize((to_size_t(size) + 3) / 4, 0);
             stream.read(mBuffer.data(), size);
         }
 
         void save(IStream& stream) const
         {
-            stream.write(mBuffer.data(), mBuffer.size());
+            stream.write(mBuffer.data(), mBuffer.size() * 4);
         }
 
     private:
